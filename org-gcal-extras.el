@@ -41,7 +41,8 @@
   (categories
    nil
    :type 'sexp
-   :documentation "Sets `org-gcal-extras-categories'.")
+   :documentation "Sets `org-gcal-extras--categories'.")
+  (tags nil :type 'sexp :documentation "Sets `org-gcal-extras--tags'.")
   (on-activate nil :type 'sexp :documentation "Run on profile activation."))
 
 (defcustom org-gcal--current-profile nil
@@ -59,6 +60,17 @@
 
 See `org-gcal-extras--set-category.'")
 
+(defvar org-gcal-extras--tags '()
+  "Alist of (subject . tags).
+
+Tags can be in any of the following formats:
+
+- String representing a single tag; for example: \"foo\"
+- String representing a list of tags; for example: \":foo:bar:\"
+- List of strings; for example: (\"foo\" \"bar\")
+
+See `org-gcal-extras--set-tags.'")
+
 (cl-defun org-gcal-activate-profile (profile)
   "Set appropriate `org-gcal' variables based on PROFILE."
   (setq
@@ -70,7 +82,8 @@ See `org-gcal-extras--set-category.'")
    org-gcal-after-update-entry-functions nil
    org-gcal-fetch-event-filters nil
 
-   org-gcal-extras--categories (org-gcal-profile-categories profile))
+   org-gcal-extras--categories (org-gcal-profile-categories profile)
+   org-gcal-extras--tags (org-gcal-profile-tags profile))
   (funcall (org-gcal-profile-on-activate profile))
   (dolist (fn (reverse (org-gcal-profile-after-update-entry-functions profile)))
     (add-hook 'org-gcal-after-update-entry-functions fn))
@@ -81,10 +94,17 @@ See `org-gcal-extras--set-category.'")
   (when (fboundp 'org-gcal-reload-client-id-secret)
     (org-gcal-reload-client-id-secret)))
 
+(defun org-gcal-extras--add-tag (tag)
+  "Add TAG to `org-mode' heading at point."
+  (org-set-tags
+   (cl-remove-duplicates
+    (cons tag (org-get-tags nil 'local))
+    :test #'string=)))
+
 (defun org-gcal-extras--set-processed (_calendar-id _event _update-mode)
   "Set the processed tag on the heading at point."
   (save-excursion
-    (org-set-tags (append (org-get-tags) '(org-gcal-extras-processed-tag)))))
+    (org-gcal-extras--add-tag org-gcal-extras-processed-tag)))
 
 (defun org-gcal-extras--processed-p ()
   "Return non-nil if heading at point has been processed."
@@ -163,8 +183,22 @@ See `org-gcal-after-update-entry-functions'."
   (save-excursion
     (unless (org-gcal-extras--processed-p)
       (when-let ((summary (plist-get event :summary))
-                 (category (alist-get summary org-gcal-extras-categories)))
+                 (category (alist-get summary org-gcal-extras--categories)))
         (org-set-property "CATEGORY" category)))))
+
+(defun org-gcal-extras--set-tags (_calendar-id event _update-mode)
+  "Set appropriate tag for EVENT."
+  (save-excursion
+    (unless (org-gcal-extras--processed-p)
+      (when-let ((summary (plist-get event :summary))
+                 (tags (alist-get summary org-gcal-extras--tags)))
+        (cond
+         ((string-match-p ":" tags)
+          (mapcar #'org-gcal-extras--add-tag (string-split tags ":" 'omit-nulls)))
+         ((listp tags)
+          (mapcar #'org-gcal-extras--add-tag tags))
+         (t
+          (org-gcal-extras--add-tag tags)))))))
 
 (provide 'org-gcal-extras)
 ;;; org-gcal-extras.el ends here
