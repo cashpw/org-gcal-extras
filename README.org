@@ -1,0 +1,6 @@
+:PROPERTIES:
+:LAST_MODIFIED: [2024-12-17 Tue 09:17]
+:END:
+#+title: org-gcal-extras
+
+Extra functionality for [[github:emacsmirror/org-gcal][=org-gcal=]].
