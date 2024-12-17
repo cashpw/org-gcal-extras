@@ -38,6 +38,10 @@
    nil
    :type 'hook
    :documentation "Sets `org-gcal-fetch-event-filters'.")
+  (categories
+   nil
+   :type 'sexp
+   :documentation "Sets `org-gcal-extras-categories'.")
   (on-activate nil :type 'sexp :documentation "Run on profile activation."))
 
 (defcustom org-gcal--current-profile nil
@@ -50,15 +54,23 @@
   :type 'string
   :group 'org-gcal)
 
+(defvar org-gcal-extras--categories '()
+  "Alist of (subject . category).
+
+See `org-gcal-extras--set-category.'")
+
 (cl-defun org-gcal-activate-profile (profile)
   "Set appropriate `org-gcal' variables based on PROFILE."
   (setq
    org-gcal--current-profile profile
+
    org-gcal-client-id (org-gcal-profile-client-id profile)
    org-gcal-client-secret (org-gcal-profile-client-secret profile)
    org-gcal-fetch-file-alist (org-gcal-profile-fetch-file-alist profile)
    org-gcal-after-update-entry-functions nil
-   org-gcal-fetch-event-filters nil)
+   org-gcal-fetch-event-filters nil
+
+   org-gcal-extras--categories (org-gcal-profile-categories profile))
   (funcall (org-gcal-profile-on-activate profile))
   (dolist (fn (reverse (org-gcal-profile-after-update-entry-functions profile)))
     (add-hook 'org-gcal-after-update-entry-functions fn))
@@ -143,9 +155,16 @@
 See `org-gcal-after-update-entry-functions'."
   (save-excursion
     (unless (org-gcal-extras--processed-p)
-      (shut-up
-        (org-gcal-extras--remove-gcal-timestamp)
-        (org-schedule nil (org-gcal-extras--timestamp-from-event event))))))
+      (org-gcal-extras--remove-gcal-timestamp)
+      (org-schedule nil (org-gcal-extras--timestamp-from-event event)))))
+
+(defun org-gcal-extras--set-category (_calendar-id event _update-mode)
+  "Set appropriate category for EVENT."
+  (save-excursion
+    (unless (org-gcal-extras--processed-p)
+      (when-let ((summary (plist-get event :summary))
+                 (category (alist-get summary org-gcal-extras-categories)))
+        (org-set-property "CATEGORY" category)))))
 
 (provide 'org-gcal-extras)
 ;;; org-gcal-extras.el ends here
