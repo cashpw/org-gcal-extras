@@ -45,7 +45,7 @@
   :type 'org-gcal-profile
   :group 'org-gcal)
 
-(cl-defun org-gcal-activate-profile ((profile org-gcal-profile))
+(cl-defun org-gcal-activate-profile (profile)
   "Set appropriate `org-gcal' variables based on PROFILE."
   (setq
    org-gcal--current-profile profile
