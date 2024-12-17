@@ -62,7 +62,8 @@
   (funcall (org-gcal-profile-on-activate profile))
   (dolist (fn (reverse (org-gcal-profile-after-update-entry-functions profile)))
     (add-hook 'org-gcal-after-update-entry-functions fn))
-  (add-hook 'org-gcal-after-update-entry-functions 'org-gcal-extras--set-processed)
+  (add-hook
+   'org-gcal-after-update-entry-functions 'org-gcal-extras--set-processed)
   (dolist (fn (reverse (org-gcal-profile-fetch-event-filters profile)))
     (add-hook 'org-gcal-fetch-event-filters fn))
   (when (fboundp 'org-gcal-reload-client-id-secret)
@@ -71,8 +72,80 @@
 (defun org-gcal-extras--set-processed (_calendar-id _event _update-mode)
   "Set the processed tag on the heading at point."
   (save-excursion
-    (org-up-heading-safe)
     (org-set-tags (append (org-get-tags) '(org-gcal-extras-processed-tag)))))
+
+(defun org-gcal-extras--processed-p ()
+  "Return non-nil if heading at point has been processed."
+  (member org-gcal-extras-processed-tag (org-get-tags (point) t)))
+
+(defun org-gcal-extras--remove-gcal-timestamp ()
+  "Delete the timestamp inserted by `org-gcal'."
+  (save-excursion
+    (org-mark-subtree)
+    (replace-regexp org-element--timestamp-regexp ""
+                    nil
+                    (region-beginning)
+                    (region-end))
+    (deactivate-mark)))
+
+(defun org-gcal-extras--timestamp (start end)
+  "Return active `org-mode' timestamp string from START to END."
+  (cond
+   ((or (string= start end) (org-gcal--alldayp start end))
+    (org-gcal--format-iso2org start))
+   ((and (= (plist-get (org-gcal--parse-date start) :year)
+            (plist-get (org-gcal--parse-date end) :year))
+         (= (plist-get (org-gcal--parse-date start) :mon)
+            (plist-get (org-gcal--parse-date end) :mon))
+         (= (plist-get (org-gcal--parse-date start) :day)
+            (plist-get (org-gcal--parse-date end) :day)))
+    (format "<%s-%s>"
+            (org-gcal--format-date start "%Y-%m-%d %a %H:%M")
+            (org-gcal--format-date end "%H:%M")))
+   (t
+    (format "%s--%s"
+            (org-gcal--format-iso2org start)
+            (org-gcal--format-iso2org
+             (if (< 11 (length end))
+                 end
+               (org-gcal--iso-previous-day end)))))))
+
+(defun org-gcal-extras--timestamp-from-event (event)
+  "Return `org-mode' timestamp for EVENT duration."
+  (let* ((start-time (plist-get (plist-get event :start) :dateTime))
+         (end-time (plist-get (plist-get event :end) :dateTime))
+         (start-day (plist-get (plist-get event :start) :date))
+         (end-day (plist-get (plist-get event :end) :date))
+         (start
+          (if start-time
+              (org-gcal--convert-time-to-local-timezone
+               start-time org-gcal-local-timezone)
+            start-day))
+         (end
+          (if end-time
+              (org-gcal--convert-time-to-local-timezone
+               end-time org-gcal-local-timezone)
+            end-day))
+         (old-time-desc (org-gcal--get-time-and-desc))
+         (old-start (plist-get old-time-desc :start))
+         (old-end (plist-get old-time-desc :start))
+         (recurrence (plist-get event :recurrence)))
+    ;; Keep existing timestamps for parent recurring events.
+    (when (and recurrence old-start old-end)
+      (setq
+       start old-start
+       end old-end))
+    (org-gcal-extras--timestamp start end)))
+
+(defun org-gcal-extras--set-scheduled (_calendar-id event _update-mode)
+  "Set scheduled property for EVENT at point.
+
+See `org-gcal-after-update-entry-functions'."
+  (save-excursion
+    (unless (org-gcal-extras--processed-p)
+      (shut-up
+        (org-gcal-extras--remove-gcal-timestamp)
+        (org-schedule nil (org-gcal-extras--timestamp-from-event event))))))
 
 (provide 'org-gcal-extras)
 ;;; org-gcal-extras.el ends here
