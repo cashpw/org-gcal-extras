@@ -79,32 +79,33 @@ See `org-gcal-extras--set-tags.'")
    org-gcal-client-id (org-gcal-profile-client-id profile)
    org-gcal-client-secret (org-gcal-profile-client-secret profile)
    org-gcal-fetch-file-alist (org-gcal-profile-fetch-file-alist profile)
-   org-gcal-after-update-entry-functions nil
-   org-gcal-fetch-event-filters nil
 
    org-gcal-extras--categories (org-gcal-profile-categories profile)
    org-gcal-extras--tags (org-gcal-profile-tags profile))
+
   (funcall (org-gcal-profile-on-activate profile))
+
+  (setq org-gcal-after-update-entry-functions nil)
   (dolist (fn (reverse (org-gcal-profile-after-update-entry-functions profile)))
     (add-hook 'org-gcal-after-update-entry-functions fn))
   (add-hook
    'org-gcal-after-update-entry-functions 'org-gcal-extras--set-processed)
+
+  (setq org-gcal-fetch-event-filters nil)
   (dolist (fn (reverse (org-gcal-profile-fetch-event-filters profile)))
     (add-hook 'org-gcal-fetch-event-filters fn))
+
   (when (fboundp 'org-gcal-reload-client-id-secret)
     (org-gcal-reload-client-id-secret)))
 
 (defun org-gcal-extras--add-tag (tag)
   "Add TAG to `org-mode' heading at point."
   (org-set-tags
-   (cl-remove-duplicates
-    (cons tag (org-get-tags nil 'local))
-    :test #'string=)))
+   (cl-remove-duplicates (cons tag (org-get-tags nil 'local)) :test #'string=)))
 
 (defun org-gcal-extras--set-processed (_calendar-id _event _update-mode)
   "Set the processed tag on the heading at point."
-  (save-excursion
-    (org-gcal-extras--add-tag org-gcal-extras-processed-tag)))
+  (save-excursion (org-gcal-extras--add-tag org-gcal-extras-processed-tag)))
 
 (defun org-gcal-extras--processed-p ()
   "Return non-nil if heading at point has been processed."
@@ -194,7 +195,8 @@ See `org-gcal-after-update-entry-functions'."
                  (tags (alist-get summary org-gcal-extras--tags)))
         (cond
          ((string-match-p ":" tags)
-          (mapcar #'org-gcal-extras--add-tag (string-split tags ":" 'omit-nulls)))
+          (mapcar
+           #'org-gcal-extras--add-tag (string-split tags ":" 'omit-nulls)))
          ((listp tags)
           (mapcar #'org-gcal-extras--add-tag tags))
          (t
