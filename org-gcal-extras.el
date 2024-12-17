@@ -45,6 +45,11 @@
   :type 'org-gcal-profile
   :group 'org-gcal)
 
+(defcustom org-gcal-extras-processed-tag "processed"
+  "Tag which is set on a heading to indicate we've processed it already."
+  :type 'string
+  :group 'org-gcal)
+
 (cl-defun org-gcal-activate-profile (profile)
   "Set appropriate `org-gcal' variables based on PROFILE."
   (setq
@@ -57,10 +62,17 @@
   (funcall (org-gcal-profile-on-activate profile))
   (dolist (fn (reverse (org-gcal-profile-after-update-entry-functions profile)))
     (add-hook 'org-gcal-after-update-entry-functions fn))
+  (add-hook 'org-gcal-after-update-entry-functions 'org-gcal-extras--set-processed)
   (dolist (fn (reverse (org-gcal-profile-fetch-event-filters profile)))
     (add-hook 'org-gcal-fetch-event-filters fn))
   (when (fboundp 'org-gcal-reload-client-id-secret)
     (org-gcal-reload-client-id-secret)))
+
+(defun org-gcal-extras--set-processed (_calendar-id _event _update-mode)
+  "Set the processed tag on the heading at point."
+  (save-excursion
+    (org-up-heading-safe)
+    (org-set-tags (append (org-get-tags) '(org-gcal-extras-processed-tag)))))
 
 (provide 'org-gcal-extras)
 ;;; org-gcal-extras.el ends here
