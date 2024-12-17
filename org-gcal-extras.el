@@ -38,6 +38,10 @@
    nil
    :type 'hook
    :documentation "Sets `org-gcal-fetch-event-filters'.")
+  (summaries-to-skip
+   nil
+   :type '(repeat string)
+   :documentation "Sets `org-gcal-extras--summaries-to-skip'.")
   (categories
    nil
    :type 'sexp
@@ -71,6 +75,11 @@ Tags can be in any of the following formats:
 
 See `org-gcal-extras--set-tags.'")
 
+(defvar org-gcal-extras--summaries-to-skip '()
+  "List of event summaries to filter out.
+
+See `org-gcal-extras--skip-event-by-summary-p'")
+
 (cl-defun org-gcal-activate-profile (profile)
   "Set appropriate `org-gcal' variables based on PROFILE."
   (setq
@@ -80,6 +89,7 @@ See `org-gcal-extras--set-tags.'")
    org-gcal-client-secret (org-gcal-profile-client-secret profile)
    org-gcal-fetch-file-alist (org-gcal-profile-fetch-file-alist profile)
 
+   org-gcal-extras--summaries-to-skip (org-gcal-profile-summaries-to-skip profile)
    org-gcal-extras--categories (org-gcal-profile-categories profile)
    org-gcal-extras--tags (org-gcal-profile-tags profile))
 
@@ -94,6 +104,9 @@ See `org-gcal-extras--set-tags.'")
   (setq org-gcal-fetch-event-filters nil)
   (dolist (fn (reverse (org-gcal-profile-fetch-event-filters profile)))
     (add-hook 'org-gcal-fetch-event-filters fn))
+  (add-hook
+   'org-gcal-after-update-entry-functions
+   'org-gcal-extras--skip-event-by-summary-p)
 
   (when (fboundp 'org-gcal-reload-client-id-secret)
     (org-gcal-reload-client-id-secret)))
@@ -201,6 +214,15 @@ See `org-gcal-after-update-entry-functions'."
           (mapcar #'org-gcal-extras--add-tag tags))
          (t
           (org-gcal-extras--add-tag tags)))))))
+
+(defun org-gcal-extras--skip-event-by-summary-p (event)
+  "Return nil to skip EVENT."
+  (let ((summary (plist-get event :summary)))
+    (not
+     (cl-some
+      (lambda (summary-to-skip)
+        (string-match summary-to-skip summary))
+      cashpw/org-gcal--summaries-to-exclude))))
 
 (provide 'org-gcal-extras)
 ;;; org-gcal-extras.el ends here
