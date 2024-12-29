@@ -86,6 +86,7 @@ See `org-gcal-extras--skip-event-by-summary-p'")
   "Set appropriate `org-gcal' variables based on PROFILE."
   (setq
    org-gcal--current-profile profile
+   org-gcal-after-update-entry-functions nil
 
    org-gcal-client-id (org-gcal-profile-client-id profile)
    org-gcal-client-secret (org-gcal-profile-client-secret profile)
@@ -97,18 +98,18 @@ See `org-gcal-extras--skip-event-by-summary-p'")
 
   (funcall (org-gcal-profile-on-activate profile))
 
-  (setq org-gcal-after-update-entry-functions nil)
-  (dolist (fn (reverse (org-gcal-profile-after-update-entry-functions profile)))
-    (add-hook 'org-gcal-after-update-entry-functions fn))
   (add-hook
    'org-gcal-after-update-entry-functions 'org-gcal-extras--set-processed)
 
   (setq org-gcal-fetch-event-filters nil)
+  (add-hook
+   'org-gcal-fetch-event-filters
+   'org-gcal-extras--skip-event-by-summary-p)
   (dolist (fn (reverse (org-gcal-profile-fetch-event-filters profile)))
     (add-hook 'org-gcal-fetch-event-filters fn))
-  (add-hook
-   'org-gcal-after-update-entry-functions
-   'org-gcal-extras--skip-event-by-summary-p)
+
+  (dolist (fn (reverse (org-gcal-profile-after-update-entry-functions profile)))
+    (add-hook 'org-gcal-after-update-entry-functions fn))
 
   (when (fboundp 'org-gcal-reload-client-id-secret)
     (org-gcal-reload-client-id-secret)))
@@ -223,8 +224,8 @@ See `org-gcal-after-update-entry-functions'."
     (not
      (cl-some
       (lambda (summary-to-skip)
-        (string-match summary-to-skip summary))
-      cashpw/org-gcal--summaries-to-exclude))))
+        (string-match-p summary-to-skip summary))
+      org-gcal-extras--summaries-to-skip))))
 
 (provide 'org-gcal-extras)
 ;;; org-gcal-extras.el ends here
