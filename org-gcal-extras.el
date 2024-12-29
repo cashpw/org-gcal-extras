@@ -87,6 +87,7 @@ See `org-gcal-extras--skip-event-by-summary-p'")
   (setq
    org-gcal--current-profile profile
    org-gcal-after-update-entry-functions nil
+   org-gcal-fetch-event-filters nil
 
    org-gcal-client-id (org-gcal-profile-client-id profile)
    org-gcal-client-secret (org-gcal-profile-client-secret profile)
