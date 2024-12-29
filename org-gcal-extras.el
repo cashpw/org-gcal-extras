@@ -201,7 +201,7 @@ See `org-gcal-after-update-entry-functions'."
   (save-excursion
     (unless (org-gcal-extras--processed-p)
       (when-let ((summary (plist-get event :summary))
-                 (category (alist-get summary org-gcal-extras--categories)))
+                 (category (alist-get summary org-gcal-extras--categories nil nil #'string=)))
         (org-set-property "CATEGORY" category)))))
 
 (defun org-gcal-extras--set-tags (_calendar-id event _update-mode)
@@ -209,7 +209,7 @@ See `org-gcal-after-update-entry-functions'."
   (save-excursion
     (unless (org-gcal-extras--processed-p)
       (when-let ((summary (plist-get event :summary))
-                 (tags (alist-get summary org-gcal-extras--tags)))
+                 (tags (alist-get summary org-gcal-extras--tags nil nil #'string=)))
         (cond
          ((string-match-p ":" tags)
           (mapcar
