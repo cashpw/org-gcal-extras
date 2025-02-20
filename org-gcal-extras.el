@@ -9,7 +9,7 @@
 ;; Version: 0.0.1
 ;; Keywords: Symbol’s value as variable is void: finder-known-keywords
 ;; Homepage: https://github.com/cashweaver/org-gcal-extras
-;; Package-Requires: ((emacs "24.3") (org-gcal "0.4.2") (cl-lib "1.0"))
+;; Package-Requires: ((emacs "24.3") (org-gcal "0.4.2") (cl-lib "1.0") (dash "2.19.1"))
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
@@ -19,7 +19,9 @@
 ;;
 ;;; Code:
 
+(require 'org-gcal)
 (require 'cl-lib)
+(require 'dash)
 
 (cl-defstruct org-gcal-profile
   "A profile for `org-gcal'."
@@ -227,6 +229,53 @@ See `org-gcal-after-update-entry-functions'."
       (lambda (summary-to-skip)
         (string-match-p summary-to-skip summary))
       org-gcal-extras--summaries-to-skip))))
+
+(defconst org-gcal-extras--event-attendee-responsestatus-needsaction "needsAction"
+  "String value for attendee responsestatus when attendee hasn't responded.
+
+Reference: https://developers.google.com/calendar/api/v3/reference/events")
+
+(defconst org-gcal-extras--event-attendee-responsestatus-declined "declined"
+  "String value for attendee responsestatus when event is declined.
+
+Reference: https://developers.google.com/calendar/api/v3/reference/events")
+
+(defconst org-gcal-extras--event-attendee-responsestatus-tentative "tentative"
+  "String value for attendee responsestatus when event is tentatively accepted.
+
+Reference: https://developers.google.com/calendar/api/v3/reference/events")
+
+(defconst org-gcal-extras--event-attendee-responsestatus-accepted "accepted"
+  "String value for attendee responsestatus when event is tentatively accepted.
+
+Reference: https://developers.google.com/calendar/api/v3/reference/events")
+
+(defun org-gcal-extras--my-responsestatus-equals-p (event response-status)
+  "Return non-nil if we've RESPONSE-STATUS to attend EVENT."
+  (let ((attendees
+         (append
+          (plist-get event :attendees)
+          nil)))
+    (--any
+     (and
+      (plist-get it :self)
+      (string=
+       response-status
+       (plist-get it :responseStatus)))
+     attendees)))
+
+(defun org-gcal-extras--event-not-declined-by-me-p (event)
+  "Return non-nil if I haven't declined EVENT."
+  (not
+   (org-gcal-extras--my-responsestatus-equals-p
+    event
+    org-gcal-extras--event-attendee-responsestatus-declined)))
+
+(defun org-gcal-extras--event-accepted-by-me-p (event)
+  "Return non-nil if I've accepted EVENT."
+  (org-gcal-extras--my-responsestatus-equals-p
+   event
+   org-gcal-extras--event-attendee-responsestatus-accepted))
 
 (provide 'org-gcal-extras)
 ;;; org-gcal-extras.el ends here
