@@ -50,6 +50,7 @@
    nil
    :type 'sexp
    :documentation "Sets `org-gcal-extras--categories'.")
+  (skip-declined-events t :type 'sexp :documentation "Sets `org-gcal-extras--tags'.")
   (tags nil :type 'sexp :documentation "Sets `org-gcal-extras--tags'.")
   (on-activate nil :type 'sexp :documentation "Run on profile activation."))
 
@@ -84,6 +85,11 @@ See `org-gcal-extras--set-tags.'")
 
 See `org-gcal-extras--skip-event-by-summary-p'")
 
+(defvar org-gcal-extras--skip-declined-events t
+  "When non-nil, skip declined events.
+
+See `org-gcal-extras--skip-declined-event-p'")
+
 (cl-defun org-gcal-activate-profile (profile)
   "Set appropriate `org-gcal' variables based on PROFILE."
   (setq
@@ -95,6 +101,7 @@ See `org-gcal-extras--skip-event-by-summary-p'")
    org-gcal-client-secret (org-gcal-profile-client-secret profile)
    org-gcal-fetch-file-alist (org-gcal-profile-fetch-file-alist profile)
 
+   org-gcal-extras--skip-declined-events (org-gcal-profile-skip-declined-events profile)
    org-gcal-extras--summaries-to-skip (org-gcal-profile-summaries-to-skip profile)
    org-gcal-extras--categories (org-gcal-profile-categories profile)
    org-gcal-extras--tags (org-gcal-profile-tags profile))
@@ -108,6 +115,9 @@ See `org-gcal-extras--skip-event-by-summary-p'")
   (add-hook
    'org-gcal-fetch-event-filters
    'org-gcal-extras--skip-event-by-summary-p)
+  (add-hook
+   'org-gcal-fetch-event-filters
+   'org-gcal-extras--skip-declined-event-p)
   (dolist (fn (reverse (org-gcal-profile-fetch-event-filters profile)))
     (add-hook 'org-gcal-fetch-event-filters fn))
 
@@ -265,18 +275,24 @@ Reference: https://developers.google.com/calendar/api/v3/reference/events")
      attendees)))
 (defalias 'org-gcal-extras--my-responsestatus-equal-p 'org-gcal-extras--my-responsestatus=)
 
-(defun org-gcal-extras--event-not-declined-by-me-p (event)
+(defun org-gcal-extras--event-declined-by-me-p (event)
   "Return non-nil if I haven't declined EVENT."
-  (not
-   (org-gcal-extras--my-responsestatus-equal-p
-    event
-    org-gcal-extras--event-attendee-responsestatus-declined)))
+  (org-gcal-extras--my-responsestatus-equal-p
+   event
+   org-gcal-extras--event-attendee-responsestatus-declined))
 
 (defun org-gcal-extras--event-accepted-by-me-p (event)
   "Return non-nil if I've accepted EVENT."
   (org-gcal-extras--my-responsestatus-equal-p
    event
    org-gcal-extras--event-attendee-responsestatus-accepted))
+
+(defun org-gcal-extras--skip-declined-event-p (event)
+  "Return nil to skip EVENT."
+  (if org-gcal-extras--skip-declined-events
+      (not
+       (org-gcal-extras--event-declined-by-me-p event))
+    t))
 
 (defconst org-gcal-extras--event-status-confirmed "confirmed"
   "String value for a confirmed event.
