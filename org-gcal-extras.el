@@ -250,7 +250,7 @@ Reference: https://developers.google.com/calendar/api/v3/reference/events")
 
 Reference: https://developers.google.com/calendar/api/v3/reference/events")
 
-(defun org-gcal-extras--my-responsestatus-equals-p (event response-status)
+(defun org-gcal-extras--my-responsestatus-equal-p (event response-status)
   "Return non-nil if we've RESPONSE-STATUS to attend EVENT."
   (let ((attendees
          (append
@@ -263,19 +263,48 @@ Reference: https://developers.google.com/calendar/api/v3/reference/events")
        response-status
        (plist-get it :responseStatus)))
      attendees)))
+(defalias 'org-gcal-extras--my-responsestatus-equal-p 'org-gcal-extras--my-responsestatus=)
 
 (defun org-gcal-extras--event-not-declined-by-me-p (event)
   "Return non-nil if I haven't declined EVENT."
   (not
-   (org-gcal-extras--my-responsestatus-equals-p
+   (org-gcal-extras--my-responsestatus-equal-p
     event
     org-gcal-extras--event-attendee-responsestatus-declined)))
 
 (defun org-gcal-extras--event-accepted-by-me-p (event)
   "Return non-nil if I've accepted EVENT."
-  (org-gcal-extras--my-responsestatus-equals-p
+  (org-gcal-extras--my-responsestatus-equal-p
    event
    org-gcal-extras--event-attendee-responsestatus-accepted))
+
+(defconst org-gcal-extras--event-status-confirmed "confirmed"
+  "String value for a confirmed event.
+
+Reference: https://developers.google.com/calendar/api/v3/reference/events")
+
+(defconst org-gcal-extras--event-status-tentative "tentative"
+  "String value for a tentatively accepted event.
+
+Reference: https://developers.google.com/calendar/api/v3/reference/events")
+
+(defconst org-gcal-extras--event-status-cancelled "cancelled"
+  "String value for a cancelled event.
+
+Reference: https://developers.google.com/calendar/api/v3/reference/events")
+
+(defun org-gcal-extras--event-status-equal-p (event status)
+  "Return non-nil if EVENT is cancelled."
+  (string=
+   (plist-get event :status)
+   status))
+(defalias 'org-gcal-extras--event-status-equal-p 'org-gcal-extras--event-status=)
+
+(defun org-gcal-extras--event-cancelled-p (event)
+  "Return non-nil if EVENT is cancelled."
+  (string=
+   (plist-get event :status)
+   org-gcal-extras--event-status-cancelled))
 
 (provide 'org-gcal-extras)
 ;;; org-gcal-extras.el ends here
