@@ -273,7 +273,7 @@ Reference: https://developers.google.com/calendar/api/v3/reference/events")
        response-status
        (plist-get it :responseStatus)))
      attendees)))
-(defalias 'org-gcal-extras--my-responsestatus-equal-p 'org-gcal-extras--my-responsestatus=)
+(defalias 'org-gcal-extras--my-responsestatus= 'org-gcal-extras--my-responsestatus-equal-p)
 
 (defun org-gcal-extras--event-declined-by-me-p (event)
   "Return non-nil if I haven't declined EVENT."
